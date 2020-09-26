@@ -1,111 +1,34 @@
 import { APIGatewayProxyHandler } from 'aws-lambda'
-import main from './src/index'
-import { initOracleLib } from '@tacoinfra/harbinger-lib'
-import { KmsKeyStore } from '@tacoinfra/conseil-kms'
+import { KitProvider, Monitors } from 'tessellated-geometry-celo-network-monitor'
 
-export const updateOracle: APIGatewayProxyHandler = async (
+export const monitor: APIGatewayProxyHandler = async (
   _event,
   _context,
 ) => {
-  const awsKmsKeyId = process.env.AWS_KMS_KEY_ID
-  const awsKmsKeyRegion = process.env.AWS_KMS_KEY_REGION
-  const oracleContractAddress = process.env.ORACLE_CONTRACT_ADDRESS
-  const nodeAddr = process.env.NODE_ADDR
-  const coinbaseApiKeyId = process.env.COINBASE_API_KEY_ID
-  const coinbaseApiKeySecret = process.env.COINBASE_API_KEY_SECRET
-  const coinbaseApiKeyPassphrase = process.env.COINBASE_API_KEY_PASSPHRASE
-  const assetList = process.env.ASSETS
-  const normalizerContractAddress =
-    process.env.NORMALIZER_CONTRACT_ADDRESS !== ''
-      ? process.env.NORMALIZER_CONTRACT_ADDRESS
-      : undefined
-  const signerUrl = process.env.SIGNER_URL
+  const addressFile = process.env.ADDRESS_FILE || ""
+  const slackUrl = process.env.SLACK_URL || ""
+  const slackChannel = process.env.SLACK_CHANNEL || ""
+  const pdKey = process.env.PD_KEY || ""
+  const pdService = process.env.PD_SERVICE || ""
+  const rpcUrl = process.env.RPC_URL || "http://localhost:8545"
+  const blocksToScan = parseInt(process.env.BLOCKS_TO_SCAN || "200")
 
-  if (
-    awsKmsKeyId === undefined ||
-    awsKmsKeyRegion === undefined ||
-    oracleContractAddress === undefined ||
-    nodeAddr === undefined ||
-    coinbaseApiKeyId === undefined ||
-    coinbaseApiKeySecret === undefined ||
-    coinbaseApiKeyPassphrase === undefined ||
-    assetList === undefined ||
-    signerUrl === undefined
-  ) {
-    return {
-      statusCode: 500,
-      body: 'Fatal: Missing an input. Please check your configuration.',
-    }
-  }
+  const kitProvider = new KitProvider(rpcUrl)
 
-  const assets = assetList.split(',').sort()
-
-  try {
-    const hash = await main(
-      oracleContractAddress,
-      signerUrl,
-      awsKmsKeyId,
-      awsKmsKeyRegion,
-      nodeAddr,
-      coinbaseApiKeyId,
-      coinbaseApiKeySecret,
-      coinbaseApiKeyPassphrase,
-      assets,
-      normalizerContractAddress,
-    )
-    return {
-      statusCode: 200,
-      body: hash,
-    }
-  } catch (exception) {
-    return {
-      statusCode: 500,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      body: `Error: ${JSON.stringify(exception.message)}`,
-    }
-  }
-}
-
-export const info: APIGatewayProxyHandler = async (_event, _context) => {
-  const awsKmsKeyId = process.env.AWS_KMS_KEY_ID
-  const awsKmsKeyRegion = process.env.AWS_KMS_KEY_REGION
-  const oracleContractAddress = process.env.ORACLE_CONTRACT_ADDRESS
-  const nodeAddr = process.env.NODE_ADDR
-  const coinbaseApiKeyId = process.env.COINBASE_API_KEY_ID
-  const coinbaseApiKeySecret = process.env.COINBASE_API_KEY_SECRET
-  const coinbaseApiKeyPassphrase = process.env.COINBASE_API_KEY_PASSPHRASE
-  const assetList = process.env.ASSETS
-
-  if (
-    awsKmsKeyId === undefined ||
-    awsKmsKeyRegion === undefined ||
-    oracleContractAddress === undefined ||
-    nodeAddr === undefined ||
-    coinbaseApiKeyId === undefined ||
-    coinbaseApiKeySecret === undefined ||
-    coinbaseApiKeyPassphrase === undefined ||
-    assetList === undefined
-  ) {
-    return {
-      statusCode: 500,
-      body: 'Fatal: Missing an input. Please check your configuration.',
-    }
-  }
-
-  initOracleLib('error')
-
-  const store = await KmsKeyStore.from(awsKmsKeyId, awsKmsKeyRegion)
-  const resp = {
-    awsKmsKeyId,
-    awsKmsKeyRegion,
-    oracleContractAddress,
-    nodeAddr,
-    assetList,
-    signerPublicKeyHash: store.publicKeyHash,
-  }
+  const celoMonitor = new Monitors.CeloMonitor.default(
+    kitProvider,
+    addressFile,
+    slackUrl,
+    slackChannel,
+    pdKey,
+    pdService,
+    blocksToScan,
+    true
+  )
+  await celoMonitor.monitor()
 
   return {
     statusCode: 200,
-    body: JSON.stringify(resp),
+    body: 'Monitored.',
   }
 }
