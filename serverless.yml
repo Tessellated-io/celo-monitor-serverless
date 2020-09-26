@@ -1,6 +1,6 @@
 # Serverless Config
 service:
-  name: harbinger-poster
+  name: celo-network-monitor
 
 # Plugins
 plugins:
@@ -10,93 +10,18 @@ plugins:
 provider:
   name: aws
   runtime: nodejs12.x
-  apiKeys:
-    - ${opt:stage,'coinbase'}-poster
   memorySize: 256
   timeout: 30
 
-  stage: ${opt:stage,'coinbase'}
-  region: ${self:custom.awsKmsKeyRegion}
-
   # Environment Variables
   environment:
-    AWS_KMS_KEY_ID: ${ssm:${self:custom.awsKmsKeyId}}
-    AWS_KMS_KEY_REGION: ${self:custom.awsKmsKeyRegion}
-    SIGNER_URL: ${self:custom.signerURL.${self:provider.stage}}
-    ORACLE_CONTRACT_ADDRESS: ${self:custom.oracleContractAddress.${self:provider.stage}}
-    NORMALIZER_CONTRACT_ADDRESS: ${self:custom.normalizerContractAddress.${self:provider.stage}}
-    NODE_ADDR: ${self:custom.nodeAddr}
-    COINBASE_API_KEY_ID: ${ssm:${self:custom.coinbaseApiKeyId}~true}
-    COINBASE_API_KEY_SECRET: ${ssm:${self:custom.coinbaseApiKeySecret}~true}
-    COINBASE_API_KEY_PASSPHRASE: ${ssm:${self:custom.coinbaseApiKeyPassphrase}~true}
-    ASSETS: ${self:custom.assets.${self:provider.stage}}
-
-# Custom Variables
-custom:
-  stages:
-    - coinbase
-    - binance
-    - gemini
-    - okex
-  # AWS KMS Key ID.
-  awsKmsKeyId: "/tezos/poster-kms-key-id"
-  # AWS Region where AWS KMS Key is located.
-  awsKmsKeyRegion: "eu-west-1"
-  # The address of the Oracle Contract.
-  signerURL:
-    coinbase: "pro.coinbase.com"
-    binance: "https://binance.tzbeta.net/oracle"
-    gemini: "https://gemini.tzbeta.net/oracle"
-    okex: "https://okex.tzbeta.net/oracle"
-  oracleContractAddress:
-    coinbase: "KT1P7D7jt3PfjMpsEKPyao1kHQR93t7XR5zh"
-    binance: "KT1XZitEQjpKRUC1k5gpW5qVehiKqB7BfuJn"
-    gemini: "KT1VZprQjiuHG9qz2F7hhiSgzttq9qw6Vvb9"
-    okex: "KT1XnxcyYsPGXb5pCFeykcQvXggTcY1qfX1i"
-  # The address of the Normalizer Contract. If the empty string is provided, updates are not pushed.
-  normalizerContractAddress:
-    coinbase: "KT1GcGnKfx8MP3m6axQkkfUiaBM4orYxL5MQ"
-    binance: "KT1QefkWnhqCo4mnMaPBjMr7yy6N7pJbzyBJ"
-    gemini: "KT1N897aHVKtZ2UTbhw6DydZW7aRCUYff4E9"
-    okex: "KT1Wxy2V4zqNu2NCDNJAtc26UNVEdLHjB7V8"
-  # The address of a node, change to https://rpc.tzbeta.net for mainnet
-  nodeAddr: "https://rpctest.tzbeta.net"
-  # A Coinbase Pro API Key ID
-  coinbaseApiKeyId: "/tezos/coinbase-pro-api-key"
-  # A Coinbase Pro API Key Secret
-  coinbaseApiKeySecret: "/tezos/coinbase-pro-api-secret"
-  # A Coinbase Pro API Key Passphase
-  coinbaseApiKeyPassphrase: "/tezos/coinbase-pro-api-passphrase"
-  # Assets to update.
-  assets:
-    # These order books are all available on Coinbase Pro, feel free to add more
-    coinbase: "BAT-USDC,BTC-USD,COMP-USD,DAI-USDC,ETH-USD,KNC-USD,LINK-USD,REP-USD,XTZ-USD,ZRX-USD"
-    # These order books are all available on Binance, feel free to add more
-    binance: "BAT-USDT,BTC-USDT,COMP-USDT,DAI-USDT,ETH-USDT,KNC-USDT,LINK-USDT,REP-USDT,XTZ-USDT,ZRX-USDT,CRV-USDT,BAL-USDT,SNX-USDT"
-    # These order books are all available on Gemini, feel free to add more
-    gemini: "BTC-USD,ETH-USD,LINK-USD,DAI-USD,BAT-USD,OXT-USD,ZEC-USD,BCH-USD,LTC-USD"
-    # These order books are all available on OKEx, feel free to add more
-    okex: "BTC-USDT,ETH-USDT,LINK-USDT,XTZ-USDT,ATOM-USDT,CRV-USDT,BAL-USDT,SNX-USDT,KNC-USDT"
-
+    # TODO: Place env vars here
 
 # Functions
 functions:
-  autoUpdateOracle:
-    handler: handler.updateOracle
+  monitor:
+    handler: handler.monitor
     reservedConcurrency: 1
     events:
       - schedule: rate(5 minutes)
-  manualUpdateOracle:
-    handler: handler.updateOracle      
-    events:
-      - http:
-          method: get
-          path: update
-          private: true
-  getInfo:
-    handler: handler.info
-    events:
-      - http:
-          method: get
-          path: info
-          private: true
+
